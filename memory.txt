@@ -1,0 +1,87 @@
+When the user asks the assistant to ask them a question, the assistant should also provide the answer immediately after the question.
+Is writing a LaTeX IEEE-format report titled 'Physics and Mathematical Modeling of Breakdance Powermoves' that models breakdancing movements like windmills, flares, headspins, and airflares using ODEs, Laplace transforms, and Fourier analysis.
+Has added a retinoid product to their night skincare routine. Other products in their routine include toner, snail essence, chestnut BHA 2%, ampoule, and moisturizer.
+Is taking MATH 528: Mathematical Methods for the Physical Sciences I and considering writing an optional course project report on breakdancing powermove windmill using course topics.
+Is trying to improve their hip-hop freestyle by training to make their groove look natural and big.
+Is interested in APPL 101 at UNC and its topics like biomimicry, sustainable engineering, computational modeling, and professional communication skills.
+Is preparing for an interview for an architecture security internship. They have a 30-minute interview with three panelists, including a software engineer and an architecture lead.
+Is interviewing for a SoC SW Test Engineer Intern position at Apple on November 7, 2024. Their interview coordinator for this position is named Shannon, and their recruiter is named Iris Li.
+Is working on Assignment 1 for NSCI 175, focusing on neuroscientist Sebastian Seung. They plan to explore Seung's work on mapping neuronal wiring diagrams and using tools like EyeWire and connectome visualizers to present the research. User is also interested in the future direction of Sebastian Seung's research.
+Is using a Mac and wants to set up Visual Studio Code for C++ development.
+Has built full-stack projects before but does not have professional experience.
+Is preparing for interviews that may assess their basic understanding of Verilog.
+Is reviewing topics for COMP 211 at UNC, focusing on compile, assemble, link, and load.
+Is inquiring about AXI BOOST, which they believe is a type of machinery model.
+Is inquiring about the role of XGBoost in Python and machine learning models.
+Is working on a project named Waestem with a folder structure where the `node_modules` is located in `./frontend_waestem/waestem/node_modules`.
+Mom works in a molding industry, and user is considering how silicon might be involved.
+Just won first place in a North and South Carolina talent competition with a street dance performance and will be interviewed about it.
+Performed breaking in the competition, with technical moves including baby freeze, headstand, and air chair.
+Performed to the tracks 'Anonymous' and 'Buckle Up,' with 'Buckle Up' being a track they had always wanted to dance to.
+Enjoyed making interconnected small mechanisms as a child, including a rubber race car tied to a water supply station that moved based on changes in weight and friction.
+Is currently working on Ubuntu’s built-in protection scheme against race condition attacks, specifically using `fs.protected_symlinks`.
+Clarified that Decisional Diffie-Hellman (DDH) is harder than Computational Diffie-Hellman (CDH), and CDH is harder than Discrete Logarithm (DL), meaning if DDH is hard, then CDH must be hard, and if CDH is hard, then DL must be hard, but not necessarily the other way around.
+Asked about the difference between MAC scheme and digital signature.
+Has been contacted by Apple Worldwide Recruiting for career opportunities and by Iris Li from Apple Corporate Recruiting regarding an internship starting no later than March 2025. User's earliest available start date for the internship is May 10th, 2025, and they are flexible with the end date.
+Is working on an automation script to exploit a vulnerability in a program named `vulp`, with the goal of modifying the `/etc/passwd` file.
+Is interested in locking dance moves.
+Has worked part-time as a computer science tutor for 5 years.
+Is taking ENVR 668, cross-listed as MATH 668, and fell behind in the course due to working three part-time jobs.
+Applied for the Software Engineer, Early Career role in the USA at Google and has completed a coding assessment. They are preparing for a group hangout round with a recruiter to discuss the virtual onsite interview.
+Name is Juntao Li.
+Is analyzing responses for expanding business with an account considering a change from a competitor's products.
+Has a dance audition tomorrow.
+Has 3 more problem sets.
+Is working on a project related to creating a learning tool about a scientist.
+Is studying counter integration and finding regions of analyticity.
+Uses GitHub Desktop and wants to avoid committing `.venv` files.
+Has access to Target market for OTC drugs.
+Is looking for fun remote games to play with students in class.
+Works as a Carolina engagement ambassador and also works as a TA and a tutor.
+Is writing a news article to advertise a factory for a Chinese journal aimed at Americans. The article will summarize their visit to AIAC's factory and their experience there.
+Prefers choreography guidance with specific counts.
+Is a choreographer.
+Is requesting a referral for a RedHat internship.
+Is doing a hip-hop choreography.
+Requested a diagram of a neuron and labeled components.
+Prefers minimum explanation for multiple choice questions and wants the answer choice presented first.
+Prefers answers to be given in just one sentence in the future.
+Observed that running `cat /dev/urandom | hexdump` produced output that was fast, and moving the mouse made it even faster.
+Is experiencing an issue in Premiere Pro where typing in Chinese results in the pinyin not being replaced correctly, leaving trailing pinyin at the end of the text.
+Is looking for a set of 10 dance moves to perform on stage.
+Wants to start a tech startup for danceAI and is considering offering stock options to potential team members, as they currently have no funding.
+Is currently studying functions in CapCut web version.
+Is interested in details about the character Melissa in the book 'Fairy Tale' by Stephen King.
+Wants an MLA citation for an article from NY Times.
+Is currently studying Molefi Asante Jr.'s book 'It's Bigger Than Hip-Hop: The Rise of the Post-Hip-Hop Generation.'
+Is studying Karin Barber's 'A History of African Popular Culture' and associated questions regarding African popular culture and historical events.
+Is preparing for the Adobe Certified Professional exam for Premiere Pro.
+Is currently writing an advertorial for a Railay Express restaurant and wants to write it in Chinese, referring to the website https://railayexpress.com/.
+Is taking the course AAAD 288 at UNC in Summer 1 2024 with Professor Camara.
+Is currently playing Civilization VI and is interested in the most updated abilities of Canada.
+Is currently studying questions about Support Vector Machines (SVM).
+Is currently studying the chess game they are playing.
+Is currently studying appropriate storage for their headphones (Ludos Clamor Wired Earbuds).
+Is currently studying potential issues related to network compatibility, deployment, and service parity.
+Is reading 'The Way of All Flesh.'
+Is studying the House of Lean and its foundation.
+Is looking for permanent or long-term hair removal solutions for their armpits.
+Is practicing handstands and aims to hold a handstand for 10 seconds.
+Is currently the only developer on their team.
+Is assigned a task to create a GAN model for organ transplant data and is seeking to understand how the provided datasets (SAB1, SAB2, donor HLA, and recipient HLA) interact.
+Wants to wear a knee pad for 3 hours during breakdancing.
+Is interested in product development and Scrum.
+Is involved in Agile development and interacts with a Scrum Master.
+This conversation is named 'Final Paper CHIN 356.'
+Is preparing to discuss Ah Cheng's 'The King of Trees' in a class setting and is focusing on environmentalism and Daoist philosophy.
+Is working on overcoming a habit of watching porn, specifically triggered by boredom, and is seeking a quantifiable plan for raising alertness to avoid relapsing.
+Is studying how Wang Wei constructs images of nature in his poetry.
+Is interested in the use of contrasts in Wang Wei's poetry and why he employs them.
+Is reading and analyzing texts from the Zhuangzi.
+Is reading Russell Kirkland's article 'Responsible Non-Action' in a Natural World: Perspectives from the Neiye, Zhuangzi, and Daode jing.
+Thinks Kirkland didn't accurately characterize wuwei ('responsible non-action') in Zhuangzi.
+Is looking for evidence in Zhuangzi that opposes the statement in Kirkland about nonpaternalistic engagement with the natural world.
+Is analyzing Tao's call of social mission and needs to complete notes into full paragraphs for speaker notes.
+Is studying works by Achille Mbembe and Stuart Hall on blackness.
+Is studying Mencius' views on environmental issues, particularly in relation to animal welfare.
+Juntao Li is Chinese.

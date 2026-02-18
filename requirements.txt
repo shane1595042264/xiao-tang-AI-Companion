@@ -1,0 +1,5 @@
+bilibili-api-python
+openai
+python-dotenv
+edge-tts
+pygame

@@ -8,10 +8,11 @@ import re
 from bilibili_api import live, Credential
 
 from config import load_settings
-from llm_client import build_messages, generate_reply
-from memory_store import load_memory_lines, select_memory
-from policy import is_message_allowed, is_low_value_message
-from tts_engine import TTSEngine
+from brain.llm_client import build_messages, generate_reply
+from memory.store import load_memory_lines, select_memory
+from brain.policy import is_message_allowed, is_low_value_message
+from voice.tts_engine import TTSEngine
+from overlay.server import OverlayServer
 
 
 _CJK_RE = re.compile(r"[\u4e00-\u9fff]")
@@ -39,13 +40,17 @@ class XiaoTangDanmakuListener:
         settings,
         memory_lines: list[str],
         tts: TTSEngine,
+        overlay: OverlayServer,
     ) -> None:
         self._settings = settings
         self._memory_lines = memory_lines
         self._tts = tts
+        self._overlay = overlay
         self._recent_messages: deque[str] = deque(maxlen=50)
         self._response_lock = asyncio.Lock()
         self._last_response_at = 0.0
+        self._last_username = ""
+        self._last_text = ""
 
     async def handle_danmaku(self, event: dict) -> None:
         """Handle a DANMU_MSG event."""
@@ -81,6 +86,10 @@ class XiaoTangDanmakuListener:
             if not should_respond(text, self._last_response_at, self._settings.response_cooldown_sec):
                 return
 
+            # Save for overlay broadcast
+            self._last_username = username
+            self._last_text = text
+
             language = detect_language(text)
             memory_hits = select_memory(self._memory_lines, text)
             recent_highlights = list(self._recent_messages)[-self._settings.max_context_messages:]
@@ -108,6 +117,12 @@ class XiaoTangDanmakuListener:
             self._last_response_at = time.time()
             print(f"[xiaotang] {reply}")
 
+            # Broadcast to OBS overlay
+            try:
+                await self._overlay.broadcast(self._last_username, self._last_text, reply)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[overlay_error] {exc}")
+
             # Speak the reply
             try:
                 await self._tts.speak(reply, language)
@@ -122,6 +137,10 @@ async def main() -> None:
     # Initialize TTS engine
     tts = TTSEngine()
 
+    # Initialize OBS overlay server
+    overlay = OverlayServer(port=8765)
+    await overlay.start()
+
     # Create credential from cookies
     credential = Credential(
         sessdata=settings.sessdata,
@@ -135,7 +154,7 @@ async def main() -> None:
     room = live.LiveDanmaku(settings.room_id, credential=credential)
 
     # Create our handler
-    listener = XiaoTangDanmakuListener(settings, memory_lines, tts)
+    listener = XiaoTangDanmakuListener(settings, memory_lines, tts, overlay)
 
     @room.on("DANMU_MSG")
     async def on_danmaku(event: dict) -> None:
@@ -151,12 +170,15 @@ async def main() -> None:
 
     print(f"[xiaotang] Listening on Bilibili room {settings.room_id}...")
     print("[xiaotang] TTS enabled - XiaoTang will speak responses!")
+    print("[xiaotang] OBS Overlay running at http://127.0.0.1:8765/")
+    print("[xiaotang] Add as Browser Source in OBS (recommended: 800x200)")
     try:
         await room.connect()
     except KeyboardInterrupt:
         print("[xiaotang] Shutting down...")
     finally:
         await room.disconnect()
+        await overlay.stop()
         tts.cleanup()
 
 

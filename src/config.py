@@ -18,6 +18,10 @@ class Settings:
     response_cooldown_sec: float
     max_context_messages: int
     memory_path: str
+    default_language: str
+    welcome_new_viewers: bool
+    afk_mode: bool
+    afk_timeout_minutes: float
 
 
 def load_settings() -> Settings:
@@ -45,6 +49,12 @@ def load_settings() -> Settings:
     )
     memory_path = os.getenv("MEMORY_PATH", default_memory_path)
 
+    default_language = os.getenv("DEFAULT_LANGUAGE", "Chinese")
+    welcome_new_viewers = os.getenv("WELCOME_NEW_VIEWERS", "true").lower() in ("true", "1", "yes")
+    
+    afk_mode = os.getenv("AFK_MODE", "false").lower() in ("true", "1", "yes")
+    afk_timeout_minutes = float(os.getenv("AFK_TIMEOUT_MINUTES", "1"))
+
     return Settings(
         room_id=int(room_id_raw),
         sessdata=sessdata,
@@ -56,4 +66,8 @@ def load_settings() -> Settings:
         response_cooldown_sec=cooldown,
         max_context_messages=max_context,
         memory_path=memory_path,
+        default_language=default_language,
+        welcome_new_viewers=welcome_new_viewers,
+        afk_mode=afk_mode,
+        afk_timeout_minutes=afk_timeout_minutes,
     )

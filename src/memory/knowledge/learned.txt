@@ -1,0 +1,4 @@
+# Facts XiaoTang has learned
+
+# This file stores facts that XiaoTang learns during conversations
+# New important facts (importance >= 7) will be appended here automatically

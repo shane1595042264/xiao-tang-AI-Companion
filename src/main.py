@@ -30,6 +30,7 @@ from memory import MemoryClient
 from memory.store import load_memory_lines, select_memory
 from senses import DanmakuListener
 from senses.afk_detector import AFKDetector, is_pynput_available
+from hands.bilibili_browser import BilibiliBrowser, is_selenium_available
 from overlay import OverlayServer
 from config import load_settings
 
@@ -71,6 +72,22 @@ class XiaoTang:
                 )
             else:
                 print("[warning] AFK_MODE enabled but pynput not installed. Run: pip install pynput")
+        
+        # Bilibili browser for AFK browsing
+        self.bilibili_browser = None
+        if self.settings.afk_browse_bilibili:
+            if is_selenium_available():
+                self.bilibili_browser = BilibiliBrowser(
+                    browser="edge",
+                    headless=False,
+                    video_duration_range=(
+                        self.settings.afk_video_duration_min,
+                        self.settings.afk_video_duration_max,
+                    ),
+                    start_category=self.settings.afk_browse_category,
+                )
+            else:
+                print("[warning] AFK_BROWSE_BILIBILI enabled but selenium not installed. Run: pip install selenium")
         
         # State
         self._recent_messages: deque[str] = deque(maxlen=50)
@@ -120,17 +137,34 @@ class XiaoTang:
         print("[xiaotang] Shutting down...")
         if self.afk_detector:
             self.afk_detector.stop()
+        if self.bilibili_browser:
+            self.bilibili_browser.stop()
         await self.danmaku.stop()
         await self.overlay.stop()
         self.voice.cleanup()
 
     def _on_afk_start(self) -> None:
         """Called when user goes AFK - XiaoTang activates."""
-        pass  # Could add announcement here
+        print("[afk] User is AFK - XiaoTang is now active!")
+        # Start Bilibili browser if enabled
+        if self.bilibili_browser:
+            try:
+                self.bilibili_browser.start()
+                self.bilibili_browser.start_browsing()
+                print("[browser] Bilibili browser started - browsing videos")
+            except Exception as e:
+                print(f"[browser] Failed to start browser: {e}")
 
     def _on_afk_end(self) -> None:
         """Called when user returns - XiaoTang goes quiet."""
-        pass  # Could add announcement here
+        print("[afk] User returned - XiaoTang going quiet")
+        # Stop Bilibili browser if running
+        if self.bilibili_browser:
+            try:
+                self.bilibili_browser.stop()
+                print("[browser] Bilibili browser stopped")
+            except Exception as e:
+                print(f"[browser] Failed to stop browser: {e}")
 
     def _is_active(self) -> bool:
         """Check if XiaoTang should be active (responding to messages)."""

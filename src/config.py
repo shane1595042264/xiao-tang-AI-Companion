@@ -22,6 +22,10 @@ class Settings:
     welcome_new_viewers: bool
     afk_mode: bool
     afk_timeout_minutes: float
+    afk_browse_bilibili: bool
+    afk_browse_category: str
+    afk_video_duration_min: int
+    afk_video_duration_max: int
 
 
 def load_settings() -> Settings:
@@ -54,6 +58,12 @@ def load_settings() -> Settings:
     
     afk_mode = os.getenv("AFK_MODE", "false").lower() in ("true", "1", "yes")
     afk_timeout_minutes = float(os.getenv("AFK_TIMEOUT_MINUTES", "1"))
+    
+    # AFK Bilibili browsing settings
+    afk_browse_bilibili = os.getenv("AFK_BROWSE_BILIBILI", "false").lower() in ("true", "1", "yes")
+    afk_browse_category = os.getenv("AFK_BROWSE_CATEGORY", "hot")
+    afk_video_duration_min = int(os.getenv("AFK_VIDEO_DURATION_MIN", "60"))
+    afk_video_duration_max = int(os.getenv("AFK_VIDEO_DURATION_MAX", "600"))
 
     return Settings(
         room_id=int(room_id_raw),
@@ -70,4 +80,8 @@ def load_settings() -> Settings:
         welcome_new_viewers=welcome_new_viewers,
         afk_mode=afk_mode,
         afk_timeout_minutes=afk_timeout_minutes,
+        afk_browse_bilibili=afk_browse_bilibili,
+        afk_browse_category=afk_browse_category,
+        afk_video_duration_min=afk_video_duration_min,
+        afk_video_duration_max=afk_video_duration_max,
     )

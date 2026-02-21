@@ -42,10 +42,12 @@ class AFKDetector:
         self._timeout = timeout_seconds
         self._last_activity = time.time()
         self._is_afk = False
+        self._afk_started_at = 0.0  # When AFK state began
+        self._afk_grace_period = 10.0  # Seconds to ignore activity after AFK starts
         self._running = False
         self._on_afk_start = on_afk_start
         self._on_afk_end = on_afk_end
-        
+
         self._mouse_listener: Optional[mouse.Listener] = None
         self._keyboard_listener: Optional[keyboard.Listener] = None
         self._monitor_task: Optional[asyncio.Task] = None
@@ -53,9 +55,13 @@ class AFKDetector:
     def _on_activity(self, *args) -> None:
         """Called on any keyboard/mouse activity."""
         self._last_activity = time.time()
-        
-        # If was AFK and now active, trigger callback
+
+        # If was AFK and now active, trigger callback.
+        # Ignore activity during the grace period right after AFK starts
+        # to avoid false cancellation from browser launch, mouse jitter, etc.
         if self._is_afk:
+            if time.time() - self._afk_started_at < self._afk_grace_period:
+                return
             self._is_afk = False
             print("[afk] User returned - XiaoTang going quiet")
             if self._on_afk_end:
@@ -110,6 +116,7 @@ class AFKDetector:
             
             if not self._is_afk and idle_time >= self._timeout:
                 self._is_afk = True
+                self._afk_started_at = time.time()
                 print(f"[afk] User AFK for {idle_time:.0f}s - XiaoTang activated!")
                 if self._on_afk_start:
                     self._on_afk_start()

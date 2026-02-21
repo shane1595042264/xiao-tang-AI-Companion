@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import threading
 import time
 from collections import deque
 from pathlib import Path
@@ -147,24 +148,35 @@ class XiaoTang:
         """Called when user goes AFK - XiaoTang activates."""
         print("[afk] User is AFK - XiaoTang is now active!")
         # Start Bilibili browser if enabled
+        # NOTE: Do NOT call bilibili_browser.start() here — it's a blocking
+        # Selenium call that would freeze the asyncio event loop and kill the
+        # danmaku WebSocket connection.  start_browsing() spawns a background
+        # thread whose browse_loop() already calls start() if needed.
         if self.bilibili_browser:
             try:
-                self.bilibili_browser.start()
                 self.bilibili_browser.start_browsing()
-                print("[browser] Bilibili browser started - browsing videos")
+                print("[browser] Bilibili browsing task started")
             except Exception as e:
                 print(f"[browser] Failed to start browser: {e}")
 
     def _on_afk_end(self) -> None:
         """Called when user returns - XiaoTang goes quiet."""
         print("[afk] User returned - XiaoTang going quiet")
-        # Stop Bilibili browser if running
+        # Stop Bilibili browser if running.
+        # Run in a thread because this callback fires from pynput's listener
+        # thread and stop() can block (join + driver.quit).
         if self.bilibili_browser:
-            try:
-                self.bilibili_browser.stop()
-                print("[browser] Bilibili browser stopped")
-            except Exception as e:
-                print(f"[browser] Failed to stop browser: {e}")
+            threading.Thread(
+                target=self._stop_browser, daemon=True
+            ).start()
+
+    def _stop_browser(self) -> None:
+        """Stop the browser (runs in its own thread to avoid blocking)."""
+        try:
+            self.bilibili_browser.stop()
+            print("[browser] Bilibili browser stopped")
+        except Exception as e:
+            print(f"[browser] Failed to stop browser: {e}")
 
     def _is_active(self) -> bool:
         """Check if XiaoTang should be active (responding to messages)."""

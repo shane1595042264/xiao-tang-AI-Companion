@@ -30,33 +30,12 @@ _BAD_TERMS = [
 
 
 def is_message_allowed(message: str) -> bool:
-    """Check if a message passes content safety filters."""
-    lowered = message.lower()
-    for term in _BAD_TERMS:
-        if term in lowered:
-            return False
+    """No filtering — bot is unfiltered."""
     return True
 
 
 def is_low_value_message(message: str) -> bool:
-    """Check if a message is too low-value to respond to."""
-    stripped = message.strip()
-    
-    # Allow "?" and "？" as valid question markers
-    if stripped in ("?", "？", "!", "！"):
-        return False
-    
-    if len(stripped) < 2:
-        return True
-
-    # Repeated single character spam
-    if len(set(message)) == 1 and len(message) > 3:
-        return True
-
-    # All caps ASCII without CJK (usually spam)
-    if _CJK_RE.search(message) is None and message.isascii() and message.isupper():
-        return True
-
+    """No filtering — respond to everything."""
     return False
 
 

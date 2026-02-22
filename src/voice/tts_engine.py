@@ -21,10 +21,10 @@ VOICES = {
         ],
     },
     "English": {
-        "default": "en-US-AnaNeural",  # Female, friendly
+        "default": "en-US-AriaNeural",  # Female, expressive (matches Xiaoxiao's tone)
         "alternatives": [
-            "en-US-AriaNeural",    # Female, expressive
             "en-US-JennyNeural",   # Female, conversational
+            "en-US-AnaNeural",     # Female, child-like
             "en-US-GuyNeural",     # Male, casual
         ],
     },

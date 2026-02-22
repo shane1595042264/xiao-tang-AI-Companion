@@ -35,21 +35,32 @@ class OverlayServer:
             await self._runner.cleanup()
 
     async def broadcast(self, username: str, message: str, response: str) -> None:
-        """Broadcast a message to all connected clients."""
+        """Broadcast a message to all connected clients (shows the overlay)."""
         data = json.dumps({
             "type": "response",
             "username": username,
             "message": message,
             "response": response,
         })
+        await self._send_all(data)
 
+    async def update_subtitle(self, text: str) -> None:
+        """Update just the subtitle text (no re-show animation)."""
+        data = json.dumps({"type": "subtitle", "text": text})
+        await self._send_all(data)
+
+    async def hide(self) -> None:
+        """Tell all clients to hide the overlay."""
+        await self._send_all(json.dumps({"type": "hide"}))
+
+    async def _send_all(self, data: str) -> None:
+        """Send a JSON string to every connected client."""
         dead_clients = set()
         for client in self._clients:
             try:
                 await client.send_str(data)
             except Exception:
                 dead_clients.add(client)
-
         self._clients -= dead_clients
 
     async def _websocket_handler(self, request: web.Request) -> web.WebSocketResponse:
@@ -76,6 +87,9 @@ class OverlayServer:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XiaoTang Overlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -85,25 +99,22 @@ class OverlayServer:
 
         body {
             background: transparent;
-            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            font-family: 'ZCOOL KuaiLe', 'Comic Sans MS', 'Microsoft YaHei', sans-serif;
             overflow: hidden;
         }
 
         .container {
             position: fixed;
-            bottom: 50px;
+            bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
-            width: 90%;
-            max-width: 800px;
+            width: 95%;
+            max-width: 1000px;
+            text-align: center;
         }
 
         .message-box {
-            background: linear-gradient(135deg, rgba(255, 182, 193, 0.95), rgba(255, 218, 233, 0.95));
-            border-radius: 20px;
-            padding: 20px 30px;
-            box-shadow: 0 8px 32px rgba(255, 105, 180, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.5);
+            padding: 10px 20px;
             opacity: 0;
             transform: translateY(30px);
             transition: all 0.4s ease-out;
@@ -119,85 +130,62 @@ class OverlayServer:
             transform: translateY(-20px);
         }
 
-        .header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .avatar {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #ff69b4, #ff1493);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 18px;
-            margin-right: 12px;
-            box-shadow: 0 2px 8px rgba(255, 105, 180, 0.4);
+        /* Shared stroke style for all text */
+        .stroked {
+            paint-order: stroke fill;
+            -webkit-text-stroke: 0px;
         }
 
         .name {
-            font-size: 18px;
+            font-size: 28px;
             font-weight: bold;
-            color: #d63384;
+            color: #ff5ca2;
+            text-shadow:
+                -2px -2px 0 #fff, 2px -2px 0 #fff,
+                -2px  2px 0 #fff, 2px  2px 0 #fff,
+                0 -2px 0 #fff, 0 2px 0 #fff,
+                -2px 0 0 #fff, 2px 0 0 #fff;
+            margin-bottom: 4px;
         }
 
         .user-message {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 8px;
-            padding-left: 52px;
-        }
-
-        .user-message .username {
-            color: #888;
-            font-weight: 500;
+            font-size: 18px;
+            color: #a0e8ff;
+            text-shadow:
+                -1.5px -1.5px 0 rgba(0,0,0,0.5), 1.5px -1.5px 0 rgba(0,0,0,0.5),
+                -1.5px  1.5px 0 rgba(0,0,0,0.5), 1.5px  1.5px 0 rgba(0,0,0,0.5),
+                0 -1.5px 0 rgba(0,0,0,0.5), 0 1.5px 0 rgba(0,0,0,0.5),
+                -1.5px 0 0 rgba(0,0,0,0.5), 1.5px 0 0 rgba(0,0,0,0.5);
+            margin-bottom: 6px;
         }
 
         .response {
-            font-size: 22px;
-            color: #333;
-            line-height: 1.5;
-            padding-left: 52px;
+            font-size: 38px;
+            color: #ff4d94;
+            line-height: 1.4;
+            text-shadow:
+                -3px -3px 0 #fff, 3px -3px 0 #fff,
+                -3px  3px 0 #fff, 3px  3px 0 #fff,
+                0 -3px 0 #fff, 0 3px 0 #fff,
+                -3px 0 0 #fff, 3px 0 0 #fff;
+            transition: opacity 0.2s ease;
         }
 
-        .response.typing::after {
-            content: '|';
-            animation: blink 0.7s infinite;
+        @keyframes pop-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            60% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
         }
 
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
-        }
-
-        .sparkle {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background: #ff69b4;
-            border-radius: 50%;
-            opacity: 0;
-            animation: sparkle 1.5s ease-in-out infinite;
-        }
-
-        @keyframes sparkle {
-            0%, 100% { opacity: 0; transform: scale(0); }
-            50% { opacity: 1; transform: scale(1); }
+        .message-box.visible .response {
+            animation: pop-in 0.35s ease-out;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="message-box" id="messageBox">
-            <div class="header">
-                <div class="avatar">糖</div>
-                <div class="name">XiaoTang</div>
-            </div>
+            <div class="name">XiaoTang</div>
             <div class="user-message" id="userMessage"></div>
             <div class="response" id="response"></div>
         </div>
@@ -208,7 +196,6 @@ class OverlayServer:
         const userMessage = document.getElementById('userMessage');
         const response = document.getElementById('response');
 
-        let hideTimeout = null;
         let ws = null;
 
         function connect() {
@@ -222,6 +209,10 @@ class OverlayServer:
                 const data = JSON.parse(event.data);
                 if (data.type === 'response') {
                     showMessage(data.username, data.message, data.response);
+                } else if (data.type === 'subtitle') {
+                    swapSubtitle(data.text);
+                } else if (data.type === 'hide') {
+                    hideMessage();
                 }
             };
 
@@ -237,24 +228,27 @@ class OverlayServer:
         }
 
         function showMessage(username, message, responseText) {
-            if (hideTimeout) {
-                clearTimeout(hideTimeout);
-            }
-
-            userMessage.innerHTML = `<span class="username">${username}:</span> ${message}`;
+            userMessage.textContent = username + ': ' + message;
             response.textContent = responseText;
 
             messageBox.classList.remove('hiding');
             messageBox.classList.add('visible');
+        }
 
-            const displayTime = Math.min(Math.max(responseText.length * 100, 5000), 15000);
+        function swapSubtitle(text) {
+            // Quick fade-out, swap text, fade-in
+            response.style.opacity = '0';
+            setTimeout(() => {
+                response.textContent = text;
+                response.style.opacity = '1';
+            }, 150);
+        }
 
-            hideTimeout = setTimeout(() => {
-                messageBox.classList.add('hiding');
-                setTimeout(() => {
-                    messageBox.classList.remove('visible', 'hiding');
-                }, 400);
-            }, displayTime);
+        function hideMessage() {
+            messageBox.classList.add('hiding');
+            setTimeout(() => {
+                messageBox.classList.remove('visible', 'hiding');
+            }, 400);
         }
 
         connect();

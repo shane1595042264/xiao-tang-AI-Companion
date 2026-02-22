@@ -16,6 +16,7 @@ try:
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.chrome.options import Options as ChromeOptions
     from selenium.webdriver.edge.options import Options as EdgeOptions
+    from selenium.webdriver.common.action_chains import ActionChains
     from selenium.common.exceptions import (
         NoSuchElementException,
         TimeoutException,
@@ -107,6 +108,52 @@ class BilibiliBrowser:
             options.add_experimental_option("useAutomationExtension", False)
             return webdriver.Edge(options=options)
 
+    def extract_cookies(self) -> dict[str, str]:
+        """Extract bilibili cookies from the persistent browser profile.
+
+        Opens a headless browser with the same profile, grabs SESSDATA /
+        bili_jct / buvid3, then closes it.  Returns a dict (may be empty
+        if not logged in).
+        """
+        profile_dir = self._get_profile_dir()
+
+        if self._browser_type == "chrome":
+            options = ChromeOptions()
+        else:
+            options = EdgeOptions()
+
+        options.add_argument("--headless=new")
+        options.add_argument(f"--user-data-dir={profile_dir}")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--log-level=3")
+        options.add_argument("--disable-logging")
+        options.add_argument("--disable-gpu")
+
+        if self._browser_type == "chrome":
+            driver = webdriver.Chrome(options=options)
+        else:
+            driver = webdriver.Edge(options=options)
+
+        try:
+            driver.get("https://www.bilibili.com")
+            time.sleep(3)
+            cookies = driver.get_cookies()
+            result: dict[str, str] = {}
+            for cookie in cookies:
+                name = cookie.get("name", "")
+                if name == "SESSDATA":
+                    result["sessdata"] = cookie["value"]
+                elif name == "bili_jct":
+                    result["bili_jct"] = cookie["value"]
+                elif name == "buvid3":
+                    result["buvid3"] = cookie["value"]
+            return result
+        except Exception as e:
+            print(f"[browser] Failed to extract cookies: {e}")
+            return {}
+        finally:
+            driver.quit()
+
     def start(self) -> None:
         """Start the browser."""
         if self._driver:
@@ -142,9 +189,14 @@ class BilibiliBrowser:
 
     def browse_loop(self) -> None:
         """Main browsing loop - continuously watch and switch videos."""
-        if not self._driver:
-            self.start()
-        
+        try:
+            if not self._driver:
+                self.start()
+        except Exception as e:
+            print(f"[browser_error] Failed to start browser: {e}")
+            self._running = False
+            return
+
         while self._running:
             try:
                 # Click on a video if on category page
@@ -167,6 +219,33 @@ class BilibiliBrowser:
                     self._driver.get(start_url)
                 except Exception:
                     pass
+
+    def _enter_fullscreen(self) -> None:
+        """Enter fullscreen — uses Bilibili 'F' shortcut on standard pages,
+        falls back to JS Fullscreen API on special pages (festival, etc.)."""
+        if not self._driver or not self._is_watching_video():
+            return
+        try:
+            time.sleep(2)  # Let the player initialize
+
+            if self._is_standard_video_page():
+                # Standard /video/ page — press F (Bilibili shortcut)
+                video = self._driver.find_element(By.CSS_SELECTOR, "video")
+                ActionChains(self._driver).move_to_element(video).send_keys("f").perform()
+            else:
+                # Special page (festival, bangumi, etc.) — use JS Fullscreen API
+                self._driver.execute_script("""
+                    var video = document.querySelector('video');
+                    if (video) {
+                        var req = video.requestFullscreen
+                                || video.webkitRequestFullscreen
+                                || video.msRequestFullscreen;
+                        if (req) req.call(video);
+                    }
+                """)
+            print("[browser] Entered fullscreen")
+        except Exception as e:
+            print(f"[browser] Could not enter fullscreen: {e}")
 
     def _get_video_duration(self) -> Optional[float]:
         """Get the total duration of the current video in seconds from Bilibili player."""
@@ -251,7 +330,22 @@ class BilibiliBrowser:
             time.sleep(3)
 
     def _is_watching_video(self) -> bool:
-        """Check if currently on a video page."""
+        """Check if currently on a page with a video playing."""
+        try:
+            current_url = self._driver.current_url
+            # Standard video pages
+            if "/video/" in current_url or "/BV" in current_url:
+                return True
+            # Special pages (festival, bangumi, etc.) that embed a video player
+            has_video = self._driver.execute_script(
+                "return !!document.querySelector('video')"
+            )
+            return has_video
+        except Exception:
+            return False
+
+    def _is_standard_video_page(self) -> bool:
+        """Check if on a standard /video/ page (not festival/special pages)."""
         try:
             current_url = self._driver.current_url
             return "/video/" in current_url or "/BV" in current_url
@@ -290,8 +384,9 @@ class BilibiliBrowser:
                         print(f"[browser] Opening video: {self._current_video_title}")
                         self._driver.get(href)
                         time.sleep(3)
+                        self._enter_fullscreen()
                         return
-            
+
             print("[browser] No videos found on page")
                     
         except Exception as e:
@@ -301,42 +396,44 @@ class BilibiliBrowser:
         """Click on a recommended video from the sidebar."""
         try:
             time.sleep(1)
-            
-            # Find all video links on the page (recommendations)
-            links = self._driver.find_elements(By.CSS_SELECTOR, "a[href*='/video/BV']")
-            
-            if links:
-                # Filter to visible and not the current video
-                current_url = self._driver.current_url
-                visible = [
-                    l for l in links 
-                    if l.is_displayed() and l.get_attribute("href") != current_url
-                ]
-                
-                if visible:
-                    rec = random.choice(visible[:8])
-                    
-                    # Get title
-                    try:
-                        self._current_video_title = rec.text[:50] if rec.text else "Unknown"
-                    except Exception:
-                        self._current_video_title = "Unknown"
-                    
-                    # Navigate directly via href
-                    href = rec.get_attribute("href")
-                    if href:
-                        if href.startswith("//"):
-                            href = "https:" + href
-                        print(f"[browser] Next video: {self._current_video_title}")
-                        self._driver.get(href)
-                        time.sleep(3)
-                        return
-            
+
+            # Grab recommendation hrefs + titles via JS (works in web fullscreen
+            # where elements are hidden and is_displayed() would filter them out)
+            current_url = self._driver.current_url
+            recs = self._driver.execute_script("""
+                var current = arguments[0];
+                var links = document.querySelectorAll("a[href*='/video/BV']");
+                var result = [];
+                for (var i = 0; i < links.length; i++) {
+                    var href = links[i].href;
+                    if (href && href !== current) {
+                        result.push({
+                            href: href,
+                            title: (links[i].textContent || '').trim().substring(0, 50)
+                        });
+                    }
+                }
+                return result;
+            """, current_url)
+
+            if recs:
+                rec = random.choice(recs[:8])
+                href = rec["href"]
+                self._current_video_title = rec["title"] or "Unknown"
+
+                if href.startswith("//"):
+                    href = "https:" + href
+                print(f"[browser] Next video: {self._current_video_title}")
+                self._driver.get(href)
+                time.sleep(3)
+                self._enter_fullscreen()
+                return
+
             # Fallback: go back to category page
             print("[browser] No recommendations found, returning to category...")
             start_url = self.CATEGORIES.get(self._start_category, self.CATEGORIES["hot"])
             self._driver.get(start_url)
-            
+
         except Exception as e:
             print(f"[browser] Failed to click recommendation: {e}")
             # Go back to category

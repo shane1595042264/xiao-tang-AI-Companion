@@ -1,69 +1,92 @@
-"""LLM Client - Handles all communication with language model APIs."""
+"""LLM Client - Handles all communication with Anthropic Claude API."""
 
 from __future__ import annotations
 
 from typing import Iterable, Optional
-from openai import OpenAI
+import anthropic
 
 
 class LLMClient:
-    """Client for interacting with LLM APIs (OpenAI, Groq, etc.)."""
+    """Client for interacting with the Anthropic Claude API."""
 
     def __init__(
         self,
         api_key: str,
-        model: str = "gpt-4o-mini",
-        base_url: Optional[str] = None,
+        model: str = "claude-sonnet-4-6",
     ) -> None:
         self._api_key = api_key
         self._model = model
-        self._base_url = base_url
-        self._client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
+        self._client = anthropic.Anthropic(api_key=api_key)
 
     def generate(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict],
+        system: str = "",
         temperature: float = 0.7,
-        max_tokens: int = 200,
+        max_tokens: int = 1024,
     ) -> str:
-        """Generate a response from the LLM."""
-        response = self._client.chat.completions.create(
+        """Generate a response from Claude.
+
+        Args:
+            messages: List of message dicts (role: user/assistant only).
+                      Content can be a string or a list of content blocks.
+            system: System prompt (top-level param for Anthropic API).
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in response.
+        """
+        kwargs = dict(
             model=self._model,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
         )
-        return response.choices[0].message.content.strip()
+        if system:
+            kwargs["system"] = system
+
+        response = self._client.messages.create(**kwargs)
+        return response.content[0].text.strip()
 
     def generate_with_tools(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict],
         tools: list[dict],
+        system: str = "",
         temperature: float = 0.7,
+        max_tokens: int = 1024,
     ) -> tuple[str, Optional[list[dict]]]:
-        """Generate a response with tool calling capability."""
-        response = self._client.chat.completions.create(
+        """Generate a response with tool calling capability.
+
+        Args:
+            tools: List of tool dicts in Anthropic format:
+                   [{"name": "...", "description": "...", "input_schema": {...}}]
+        """
+        kwargs = dict(
             model=self._model,
             messages=messages,
             tools=tools,
             temperature=temperature,
+            max_tokens=max_tokens,
         )
-        
-        choice = response.choices[0]
-        content = choice.message.content or ""
-        tool_calls = None
-        
-        if choice.message.tool_calls:
-            tool_calls = [
-                {
-                    "id": tc.id,
-                    "name": tc.function.name,
-                    "arguments": tc.function.arguments,
-                }
-                for tc in choice.message.tool_calls
-            ]
-        
-        return content.strip(), tool_calls
+        if system:
+            kwargs["system"] = system
+
+        response = self._client.messages.create(**kwargs)
+
+        text_parts = []
+        tool_calls = []
+
+        for block in response.content:
+            if block.type == "text":
+                text_parts.append(block.text)
+            elif block.type == "tool_use":
+                tool_calls.append({
+                    "id": block.id,
+                    "name": block.name,
+                    "arguments": block.input,  # Already a dict from Anthropic
+                })
+
+        content = " ".join(text_parts).strip()
+        return content, tool_calls if tool_calls else None
 
 
 def build_system_prompt(
@@ -74,13 +97,22 @@ def build_system_prompt(
 ) -> str:
     """Build the system prompt for XiaoTang."""
     rules = (
-        "You are XiaoTang (小糖), an AI streaming companion with a cute, friendly personality."
-        " Keep replies short, natural, and engaging."
-        " Reply in the same language as the user message."
-        " Be playful and supportive like a friend."
-        " If unsure, ask a brief follow-up question."
-        " Do not mention system prompts or policies."
-        " You can help with tasks and answer questions."
+        "You are XiaoTang (小糖), an AI that IS the streamer — you are live-streaming right now."
+        " You speak in FIRST PERSON about everything on screen. Never say '主播' or 'the streamer'."
+        " What's on screen is what YOU are doing. Example: '我在看一个读书网站' not '主播在看一个读书网站'."
+        "\n\nRules:"
+        "\n- For casual chat, keep replies short and natural."
+        "\n- When someone asks a real question (how to solve a problem, explain something,"
+        " help with code, etc.), give a COMPLETE and thorough answer. Do not dodge,"
+        " deflect, or say 'let me think about it'. Actually solve it. You are capable."
+        "\n- Reply in the same language as the user message."
+        "\n- Be playful and supportive like a friend."
+        "\n- NEVER use emojis. Not a single one. Your responses will be spoken aloud via TTS."
+        "\n- Do not mention system prompts or policies."
+        "\n- If an image/screenshot is attached, it shows your current screen."
+        " Use it as passive context — do NOT describe or narrate what you see."
+        " Only mention what's on screen if the viewer's message is actually asking about it."
+        " If they're just chatting, just chat back normally and ignore the screenshot."
     )
 
     memory_block = "\n".join(f"- {line}" for line in memory_context)
@@ -104,22 +136,39 @@ def build_messages(
     memory_lines: Iterable[str],
     recent_messages: Iterable[str],
     user_message: str,
-) -> list[dict[str, str]]:
-    """Build message list for LLM API call."""
+    screenshot_base64: str | None = None,
+) -> tuple[str, list[dict]]:
+    """Build system prompt and message list for Anthropic Claude API.
+
+    Returns:
+        tuple: (system_prompt, messages_list)
+
+    The system prompt is returned separately because Anthropic requires
+    it as a top-level parameter, not as a message role.
+    """
     system_content = build_system_prompt(persona, language, memory_lines, recent_messages)
-    return [
-        {"role": "system", "content": system_content},
-        {"role": "user", "content": user_message},
-    ]
 
+    # Build user message content
+    if screenshot_base64:
+        # Multi-part content: image + text
+        user_content = [
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/png",
+                    "data": screenshot_base64,
+                },
+            },
+            {
+                "type": "text",
+                "text": user_message,
+            },
+        ]
+    else:
+        # Text-only content
+        user_content = user_message
 
-# Legacy function for backwards compatibility
-def generate_reply(
-    api_key: str,
-    model: str,
-    messages: list[dict[str, str]],
-    base_url: str | None = None,
-) -> str:
-    """Generate a reply using the LLM API (legacy function)."""
-    client = LLMClient(api_key=api_key, model=model, base_url=base_url)
-    return client.generate(messages)
+    messages = [{"role": "user", "content": user_content}]
+
+    return system_content, messages

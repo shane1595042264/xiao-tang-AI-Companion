@@ -35,6 +35,14 @@ class DanmakuListener:
         self._message_history: deque[dict] = deque(maxlen=100)
         self._running = False
 
+    def update_credential(self, sessdata: str, bili_jct: str, buvid3: str) -> None:
+        """Update the credential (e.g. from auto-extracted browser cookies)."""
+        self._credential = Credential(
+            sessdata=sessdata,
+            bili_jct=bili_jct,
+            buvid3=buvid3,
+        )
+
     def on(self, event_type: str, handler: Callable) -> None:
         """Register an event handler."""
         if event_type not in self._handlers:

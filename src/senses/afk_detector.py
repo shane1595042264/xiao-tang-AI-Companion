@@ -42,8 +42,6 @@ class AFKDetector:
         self._timeout = timeout_seconds
         self._last_activity = time.time()
         self._is_afk = False
-        self._afk_started_at = 0.0  # When AFK state began
-        self._afk_grace_period = 10.0  # Seconds to ignore activity after AFK starts
         self._running = False
         self._on_afk_start = on_afk_start
         self._on_afk_end = on_afk_end
@@ -56,12 +54,8 @@ class AFKDetector:
         """Called on any keyboard/mouse activity."""
         self._last_activity = time.time()
 
-        # If was AFK and now active, trigger callback.
-        # Ignore activity during the grace period right after AFK starts
-        # to avoid false cancellation from browser launch, mouse jitter, etc.
+        # If was AFK and now active, immediately go quiet — no grace period.
         if self._is_afk:
-            if time.time() - self._afk_started_at < self._afk_grace_period:
-                return
             self._is_afk = False
             print("[afk] User returned - XiaoTang going quiet")
             if self._on_afk_end:
@@ -116,7 +110,6 @@ class AFKDetector:
             
             if not self._is_afk and idle_time >= self._timeout:
                 self._is_afk = True
-                self._afk_started_at = time.time()
                 print(f"[afk] User AFK for {idle_time:.0f}s - XiaoTang activated!")
                 if self._on_afk_start:
                     self._on_afk_start()
@@ -131,9 +124,7 @@ class AFKDetector:
         """Check if user is currently AFK."""
         if not self._running:
             return True  # If not monitoring, assume AFK (bot always on)
-        
-        idle_time = time.time() - self._last_activity
-        return idle_time >= self._timeout
+        return self._is_afk
 
     @property
     def idle_seconds(self) -> float:

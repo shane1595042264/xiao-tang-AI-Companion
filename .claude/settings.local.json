@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(tail:*)",
+      "WebFetch(domain:groq.com)",
+      "WebFetch(domain:console.groq.com)",
+      "Bash(cd C:\\\\Users\\\\douvle\\\\Documents\\\\Project\\\\xiaotang\\\\xiao-tang-AI-Companion:*)"
+    ]
+  }
+}

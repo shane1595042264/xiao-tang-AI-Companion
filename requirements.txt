@@ -1,5 +1,11 @@
 bilibili-api-python
-openai
+anthropic
+obsws-python
 python-dotenv
 edge-tts
 pygame
+sounddevice
+webrtcvad-wheels
+numpy
+httpx
+pycaw

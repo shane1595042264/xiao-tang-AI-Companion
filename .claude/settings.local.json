@@ -5,7 +5,19 @@
       "Bash(tail:*)",
       "WebFetch(domain:groq.com)",
       "WebFetch(domain:console.groq.com)",
-      "Bash(cd C:\\\\Users\\\\douvle\\\\Documents\\\\Project\\\\xiaotang\\\\xiao-tang-AI-Companion:*)"
+      "Bash(cd C:\\\\Users\\\\douvle\\\\Documents\\\\Project\\\\xiaotang\\\\xiao-tang-AI-Companion:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:genteki.github.io)",
+      "WebFetch(domain:inochi2d.com)",
+      "WebFetch(domain:theten.ai)",
+      "Bash(ls C:\\\\Program Files \\(x86\\)\\\\Steam\\\\steamapps\\\\common\\\\VTube Studio\\\\VTube Studio_Data\\\\StreamingAssets\\\\Live2DModels\\\\maolili_vts\\\\biaoqing:*)",
+      "WebFetch(domain:www.vellum.ai)",
+      "WebFetch(domain:supermemory.ai)",
+      "WebFetch(domain:futureaiblog.com)",
+      "WebFetch(domain:docs.phidata.com)",
+      "WebFetch(domain:docs.letta.com)",
+      "WebFetch(domain:www.getmaxim.ai)",
+      "WebFetch(domain:mem0.ai)"
     ]
   }
 }

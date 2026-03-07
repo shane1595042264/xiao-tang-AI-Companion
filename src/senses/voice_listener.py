@@ -115,7 +115,8 @@ class VoiceListener:
         if PYCAW_AVAILABLE:
             try:
                 speakers = AudioUtilities.GetSpeakers()
-                meter_iface = speakers.Activate(
+                raw_dev = speakers._dev  # Raw IMMDevice COM pointer
+                meter_iface = raw_dev.Activate(
                     IAudioMeterInformation._iid_, CLSCTX_ALL, None
                 )
                 self._audio_meter = meter_iface.QueryInterface(

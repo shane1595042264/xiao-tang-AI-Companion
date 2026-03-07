@@ -5,9 +5,17 @@ from __future__ import annotations
 import asyncio
 import os
 import tempfile
+import threading
 
 import edge_tts
 import pygame
+
+try:
+    import numpy as np
+    import sounddevice as sd
+    SOUNDDEVICE_AVAILABLE = True
+except ImportError:
+    SOUNDDEVICE_AVAILABLE = False
 
 
 # Voice options by language
@@ -35,6 +43,21 @@ VOICES = {
 }
 
 
+def _find_virtual_cable_device() -> int | None:
+    """Find the VB-Audio Virtual Cable input device index."""
+    if not SOUNDDEVICE_AVAILABLE:
+        return None
+    try:
+        devices = sd.query_devices()
+        for i, d in enumerate(devices):
+            name = d.get("name", "").lower()
+            if "cable input" in name and "vb-audio" in name and d["max_output_channels"] > 0:
+                return i
+    except Exception:
+        pass
+    return None
+
+
 class TTSEngine:
     """Text-to-speech engine using Microsoft Edge TTS."""
 
@@ -44,6 +67,13 @@ class TTSEngine:
         self._temp_dir = tempfile.mkdtemp(prefix="xiaotang_tts_")
         self._default_voice = default_voice
 
+        # Find virtual cable for VTuber lip sync
+        self._virtual_cable_device = _find_virtual_cable_device()
+        if self._virtual_cable_device is not None:
+            print(f"[tts] Virtual cable found (device {self._virtual_cable_device}) — lip sync enabled")
+        else:
+            print("[tts] No virtual cable found — lip sync disabled")
+
     def get_voice(self, language: str) -> str:
         """Get the voice for a given language."""
         if self._default_voice:
@@ -51,7 +81,7 @@ class TTSEngine:
         return VOICES.get(language, VOICES["English"])["default"]
 
     async def speak(self, text: str, language: str = "Chinese") -> None:
-        """Generate TTS audio and play it."""
+        """Generate TTS audio and play it on headphones + virtual cable."""
         voice = self.get_voice(language)
 
         async with self._lock:
@@ -61,8 +91,13 @@ class TTSEngine:
             await communicate.save(temp_file)
 
             try:
+                # Play on headphones via pygame
                 pygame.mixer.music.load(temp_file)
                 pygame.mixer.music.play()
+
+                # Simultaneously play on virtual cable for VTuber lip sync
+                if self._virtual_cable_device is not None and SOUNDDEVICE_AVAILABLE:
+                    self._play_on_virtual_cable(temp_file)
 
                 # Wait for playback to finish
                 while pygame.mixer.music.get_busy():
@@ -75,6 +110,38 @@ class TTSEngine:
                     os.remove(temp_file)
                 except OSError:
                     pass
+
+    def _play_on_virtual_cable(self, mp3_path: str) -> None:
+        """Play audio on the virtual cable device using pygame Sound + sounddevice."""
+        try:
+            # Load MP3 via pygame and extract raw PCM
+            sound = pygame.mixer.Sound(mp3_path)
+            raw = sound.get_raw()
+
+            # Convert to numpy float32 array
+            # pygame mixer default: 16-bit signed, system sample rate
+            mixer_info = pygame.mixer.get_init()
+            if not mixer_info:
+                return
+            sample_rate, bits, channels = mixer_info
+
+            samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+            if channels == 2:
+                samples = samples.reshape((-1, 2))
+            elif channels == 1:
+                samples = samples.reshape((-1, 1))
+
+            # Play non-blocking on virtual cable in background thread
+            def _play():
+                try:
+                    sd.play(samples, samplerate=sample_rate, device=self._virtual_cable_device)
+                    sd.wait()
+                except Exception:
+                    pass
+
+            threading.Thread(target=_play, daemon=True).start()
+        except Exception as e:
+            print(f"[tts] Virtual cable playback failed: {e}")
 
     async def speak_async(self, text: str, language: str = "Chinese") -> None:
         """Non-blocking speech - fire and forget."""

@@ -9,3 +9,4 @@ webrtcvad-wheels
 numpy
 httpx
 pycaw
+pyvts

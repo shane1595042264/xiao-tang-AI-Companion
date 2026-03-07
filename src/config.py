@@ -38,6 +38,9 @@ class Settings:
     voice_device_index: int | None
     voice_vad_aggressiveness: int
     voice_proactive_timeout: int
+    # VTuber Avatar
+    vtuber_enabled: bool
+    vtuber_port: int
 
 
 def load_settings() -> Settings:
@@ -92,6 +95,10 @@ def load_settings() -> Settings:
     voice_vad_aggressiveness = int(os.getenv("VOICE_VAD_AGGRESSIVENESS", "2"))
     voice_proactive_timeout = int(os.getenv("VOICE_PROACTIVE_TIMEOUT", "300"))
 
+    # VTuber Avatar settings
+    vtuber_enabled = os.getenv("VTUBER_ENABLED", "false").lower() in ("true", "1", "yes")
+    vtuber_port = int(os.getenv("VTUBER_PORT", "8001"))
+
     return Settings(
         room_id=int(room_id_raw),
         sessdata=sessdata,
@@ -121,4 +128,6 @@ def load_settings() -> Settings:
         voice_device_index=voice_device_index,
         voice_vad_aggressiveness=voice_vad_aggressiveness,
         voice_proactive_timeout=voice_proactive_timeout,
+        vtuber_enabled=vtuber_enabled,
+        vtuber_port=vtuber_port,
     )

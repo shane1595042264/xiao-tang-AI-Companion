@@ -35,6 +35,7 @@ from senses.afk_detector import AFKDetector, is_pynput_available
 from senses.voice_listener import VoiceListener, is_voice_listen_available
 from hands.bilibili_browser import BilibiliBrowser, is_selenium_available
 from vision import OBSVisionClient
+from avatar.vtuber import VTuberController, is_vtuber_available
 from overlay import OverlayServer
 from config import load_settings
 
@@ -103,6 +104,14 @@ class XiaoTang:
                 height=self.settings.obs_screenshot_height,
             )
 
+        # VTuber avatar (optional — Live2D model via VTube Studio)
+        self.vtuber = None
+        if self.settings.vtuber_enabled:
+            if is_vtuber_available():
+                self.vtuber = VTuberController(port=self.settings.vtuber_port)
+            else:
+                print("[warning] VTUBER_ENABLED but pyvts not installed. Run: pip install pyvts")
+
         # Voice listener for "assistant mode" when user is at computer
         self.ears = None
         if self.settings.voice_listen_enabled:
@@ -155,6 +164,10 @@ class XiaoTang:
         # Start overlay server
         await self.overlay.start()
         print("[xiaotang] OBS Overlay: http://127.0.0.1:8765/")
+
+        # Connect to VTube Studio for avatar
+        if self.vtuber:
+            await self.vtuber.connect()
 
         # Connect to OBS for vision
         if self.obs_vision:
@@ -216,6 +229,8 @@ class XiaoTang:
     async def stop(self) -> None:
         """Stop all services."""
         print("[xiaotang] Shutting down...")
+        if self.vtuber and self.vtuber.is_connected:
+            await self.vtuber.disconnect()
         if self.ears and self.ears.is_running:
             await self.ears.stop()
         if self.afk_detector:
@@ -288,6 +303,18 @@ class XiaoTang:
             return True
         # If AFK mode enabled, only active when user is AFK
         return self.afk_detector.is_afk
+
+    @staticmethod
+    def _parse_emotion(text: str) -> tuple[str, str]:
+        """Parse emotion tag from LLM response.
+
+        Input:  "[roast] 你这名字起的真有水平啊"
+        Output: ("roast", "你这名字起的真有水平啊")
+        """
+        match = re.match(r"^\[(\w+)\]\s*", text)
+        if match:
+            return match.group(1).lower(), text[match.end():]
+        return "neutral", text
 
     @staticmethod
     def _load_persona() -> str:
@@ -556,7 +583,13 @@ class XiaoTang:
             if not reply:
                 continue
 
-            print(f"[xiaotang] {reply}")
+            # Parse emotion tag from response (e.g., "[roast] text" → emotion="roast")
+            emotion, reply = self._parse_emotion(reply)
+            print(f"[xiaotang] [{emotion}] {reply}")
+
+            # Trigger VTuber expression
+            if self.vtuber and self.vtuber.is_connected:
+                await self.vtuber.set_expression(emotion)
 
             # Record in memory
             for m in batch:
@@ -572,7 +605,6 @@ class XiaoTang:
             # Mute mic during TTS to prevent echo
             if self.ears and self.ears.is_running:
                 self.ears.mute()
-
             for i, segment in enumerate(segments):
                 self._current_tts_text = segment
 
@@ -625,6 +657,9 @@ class XiaoTang:
 
             self._is_speaking = False
             self._current_tts_text = ""
+            # Reset expression to neutral
+            if self.vtuber and self.vtuber.is_connected:
+                await self.vtuber.set_expression("neutral")
             # Unmute mic after TTS with delay for residual audio to fade
             if self.ears and self.ears.is_running:
                 await asyncio.sleep(0.5)
